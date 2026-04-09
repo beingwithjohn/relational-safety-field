@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Relational Safety Field</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal-50:#E1F5EE;--teal-200:#5DCAA5;--teal-600:#0F6E56;--teal-800:#085041;
+  --amber-50:#FAEEDA;--amber-200:#EF9F27;--amber-600:#854F0B;--amber-800:#633806;
+  --blue-50:#E6F1FB;--blue-200:#85B7EB;--blue-600:#185FA5;--blue-800:#0C447C;
+  --red-50:#FCEBEB;--red-200:#F09595;--red-600:#A32D2D;--red-800:#791F1F;
+  --purple-50:#EEEDFE;--purple-200:#AFA9EC;--purple-600:#534AB7;--purple-800:#3C3489;
+  --ink:#1C1C1A;--ink-muted:#5A5A54;--ink-faint:#9A9990;
+  --paper:#FAFAF6;--paper-2:#F3F2ED;--paper-3:#ECEAE3;
+  --rule:#D8D6CE;--accent:#2E6B55;--accent-light:#5DCAA5;
+}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(250,250,246,0.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;padding:0 2.5rem;height:56px}
+.nav-title{font-family:'Playfair Display',serif;font-size:15px;color:var(--ink)}
+.nav-links{display:flex;gap:1.8rem;list-style:none}
+.nav-links a{font-size:11px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;text-decoration:none;color:var(--ink-muted);transition:color .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;padding:0 2.5rem 4.5rem;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:var(--paper)}
+.hero-bg::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--rule) 1px,transparent 1px),linear-gradient(90deg,var(--rule) 1px,transparent 1px);background-size:64px 64px;opacity:.3}
+.hero-quad-bg{position:absolute;top:56px;right:0;bottom:0;width:45%;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;opacity:.1;pointer-events:none}
+.hq{border:1px solid var(--ink)}
+.hq:nth-child(1){background:var(--teal-50)}.hq:nth-child(2){background:var(--amber-50)}
+.hq:nth-child(3){background:var(--blue-50)}.hq:nth-child(4){background:var(--red-50)}
+.hero-content{position:relative;z-index:1;max-width:660px}
+.hero-eyebrow{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:1.2rem;opacity:0;animation:fadeUp .7s .2s ease forwards}
+.hero-title{font-family:'Playfair Display',serif;font-size:clamp(2.8rem,6vw,5rem);font-weight:600;line-height:1.05;letter-spacing:-.02em;color:var(--ink);margin-bottom:1.8rem;opacity:0;animation:fadeUp .7s .35s ease forwards}
+.hero-title em{font-style:italic;color:var(--accent)}
+.hero-desc{font-size:1.05rem;font-weight:300;line-height:1.8;color:var(--ink-muted);max-width:560px;opacity:0;animation:fadeUp .7s .5s ease forwards}
+.hero-scroll{margin-top:3rem;display:flex;align-items:center;gap:1rem;font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);opacity:0;animation:fadeUp .7s .7s ease forwards}
+.hero-scroll::before{content:'';display:block;width:40px;height:1px;background:var(--rule)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* LAYOUT */
+.page-section{padding:5rem 2.5rem;max-width:1100px;margin:0 auto}
+.section-label{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3vw,2.3rem);font-weight:600;line-height:1.15;margin-bottom:1rem;color:var(--ink)}
+.section-body{font-size:1rem;font-weight:300;line-height:1.8;color:var(--ink-muted);max-width:640px;margin-bottom:2.5rem}
+hr.divider{border:none;border-top:1px solid var(--rule);max-width:1100px;margin:0 auto}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .65s ease,transform .65s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ═══ SIMPLE QUAD GRID ═══ */
+.quad-grid-simple{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:3px;border:1px solid var(--rule)}
+.qgs-card{padding:1.6rem 1.4rem;cursor:pointer;border:2px solid transparent;transition:filter .15s,transform .15s;user-select:none}
+.qgs-card:hover{filter:brightness(.96)}
+.qgs-card.active{border-color:currentColor;transform:scale(1.01);z-index:1;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.qgs-card.teal{background:var(--teal-50)}.qgs-card.teal.active{border-color:var(--teal-200)}
+.qgs-card.amber{background:var(--amber-50)}.qgs-card.amber.active{border-color:var(--amber-200)}
+.qgs-card.blue{background:var(--blue-50)}.qgs-card.blue.active{border-color:var(--blue-200)}
+.qgs-card.red{background:var(--red-50)}.qgs-card.red.active{border-color:var(--red-200)}
+.qgs-name{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;margin-bottom:.3rem}
+.qgs-card.teal .qgs-name{color:var(--teal-800)}.qgs-card.amber .qgs-name{color:var(--amber-800)}
+.qgs-card.blue .qgs-name{color:var(--blue-800)}.qgs-card.red .qgs-name{color:var(--red-800)}
+.qgs-sub{font-size:.78rem;font-style:italic}
+.qgs-card.teal .qgs-sub{color:var(--teal-600)}.qgs-card.amber .qgs-sub{color:var(--amber-600)}
+.qgs-card.blue .qgs-sub{color:var(--blue-600)}.qgs-card.red .qgs-sub{color:var(--red-600)}
+
+/* ═══ SECTION 1: CONTINUOUS FIELD ═══ */
+.field-wrap{position:relative;margin-top:1rem}
+
+/* axis labels outside */
+.axis-label-y{position:absolute;left:0;top:0;bottom:0;width:28px;display:flex;flex-direction:column;justify-content:space-between;padding:4px 0}
+.axis-label-y span{font-size:9px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);writing-mode:vertical-rl;transform:rotate(180deg)}
+.axis-label-x{display:flex;justify-content:space-between;margin-top:8px;padding:0 0 0 32px}
+.axis-label-x span{font-size:9px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* info panel below canvas */
+.field-info{margin-top:1.2rem;padding:1.2rem 1.5rem;background:var(--paper-3);border:1px solid var(--rule);border-radius:3px;min-height:90px;transition:background .3s}
+.field-info-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;margin-bottom:.3rem}
+.field-info-body{font-size:.875rem;font-weight:300;line-height:1.7;color:var(--ink-muted)}
+.fi-teal{background:var(--teal-50);border-color:var(--teal-200)}.fi-teal .field-info-name{color:var(--teal-800)}
+.fi-amber{background:var(--amber-50);border-color:var(--amber-200)}.fi-amber .field-info-name{color:var(--amber-800)}
+.fi-blue{background:var(--blue-50);border-color:var(--blue-200)}.fi-blue .field-info-name{color:var(--blue-800)}
+.fi-red{background:var(--red-50);border-color:var(--red-200)}.fi-red .field-info-name{color:var(--red-800)}
+
+.field-hint{font-size:.8rem;font-style:italic;color:var(--ink-faint);margin-top:.6rem;text-align:center}
+
+/* ═══ SECTION 2: THREE FORCES ═══ */
+.forces-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:1rem}
+.force-card{padding:1.5rem;border:1px solid var(--rule);background:var(--paper-2);border-radius:2px;transition:border-color .2s,background .2s}
+.force-card:hover{border-color:var(--accent-light);background:var(--teal-50)}
+.force-name{font-size:.8rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin-bottom:.6rem}
+.force-body{font-size:.875rem;font-weight:300;line-height:1.75;color:var(--ink-muted)}
+
+/* ═══ SECTION 3: SAFETY SPECTRUM ═══ */
+.spectrum-wrap{margin-top:1.5rem}
+.spectrum-bar{display:flex;height:52px;border-radius:4px;overflow:hidden;border:1px solid var(--rule);margin-bottom:.7rem}
+.spec-seg{flex:1;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:500;letter-spacing:.03em;text-align:center;padding:0 .5rem;line-height:1.2}
+.spec-seg.teal{background:var(--teal-50);color:var(--teal-800);border-right:1px solid var(--teal-200)}
+.spec-seg.amber{background:var(--amber-50);color:var(--amber-800);border-right:1px solid var(--amber-200)}
+.spec-seg.blue{background:var(--blue-50);color:var(--blue-800);border-right:1px solid var(--blue-200)}
+.spec-seg.red{background:var(--red-50);color:var(--red-800)}
+.spectrum-axis{display:flex;justify-content:space-between;font-size:.78rem;color:var(--ink-faint);font-style:italic}
+.spectrum-note{margin-top:1.5rem;padding:1rem 1.3rem;background:var(--paper-2);border-left:3px solid var(--rule);font-size:.875rem;font-weight:300;line-height:1.75;color:var(--ink-muted)}
+.spectrum-note strong{font-weight:500;color:var(--ink)}
+
+/* ═══ SECTION 4: INDIVIDUAL CAPACITY ═══ */
+.capacity-rows{display:flex;flex-direction:column;gap:1.1rem;margin-top:1.5rem}
+.cap-row{display:flex;align-items:center;gap:1.2rem}
+.cap-label{width:130px;flex-shrink:0;font-size:.85rem;font-weight:400;color:var(--ink-muted);text-align:right}
+.cap-track{flex:1;height:10px;background:var(--paper-3);border-radius:5px;overflow:hidden;border:1px solid var(--rule)}
+.cap-fill{height:100%;border-radius:5px;width:0;transition:width 1.3s cubic-bezier(.16,1,.3,1)}
+.cap-note{width:190px;flex-shrink:0;font-size:.8rem;font-style:italic}
+
+/* stall callouts */
+.stall-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.5rem}
+.stall-card{padding:1rem 1.2rem;border-radius:2px;border:1px solid var(--rule)}
+.stall-card.over{background:#fff8f8;border-color:var(--red-200)}
+.stall-card.stag{background:#f8f8f4;border-color:var(--amber-200)}
+.stall-head{font-size:.82rem;font-weight:500;margin-bottom:.3rem}
+.stall-card.over .stall-head{color:var(--red-800)}
+.stall-card.stag .stall-head{color:var(--amber-800)}
+.stall-body{font-size:.82rem;font-weight:300;line-height:1.65;color:var(--ink-muted)}
+
+/* ═══ SECTION 5: DEVELOPMENTAL ARC ═══ */
+.arc-outer{margin-top:1.5rem;padding:2rem 2.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px}
+.arc-note-top{font-size:.8rem;font-style:italic;color:var(--ink-faint);text-align:center;margin-bottom:1.2rem}
+.arc-stages{display:flex;align-items:stretch;gap:0;margin-bottom:1rem}
+.arc-stage{flex:1;padding:1.1rem .9rem;text-align:center;border-radius:3px;border:1.5px solid transparent;cursor:pointer;transition:transform .2s,box-shadow .2s,opacity .2s}
+.arc-stage:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.arc-stage.teal{background:var(--teal-50);border-color:var(--teal-200)}
+.arc-stage.amber{background:var(--amber-50);border-color:var(--amber-200)}
+.arc-stage.blue{background:var(--blue-50);border-color:var(--blue-200)}
+.arc-stage.red{background:var(--red-50);border-color:var(--red-200)}
+.arc-arrow{padding:0 .5rem;display:flex;align-items:center;color:var(--purple-200);font-size:1rem;flex-shrink:0}
+.arc-sname{font-family:'Playfair Display',serif;font-size:.9rem;font-weight:600;line-height:1.2;margin-bottom:.25rem}
+.teal .arc-sname{color:var(--teal-800)}.amber .arc-sname{color:var(--amber-800)}
+.blue .arc-sname{color:var(--blue-800)}.red .arc-sname{color:var(--red-800)}
+.arc-ssub{font-size:.7rem;font-style:italic;color:var(--ink-faint)}
+.arc-detail{margin-top:1rem;padding:1rem 1.2rem;border-radius:3px;border:1px solid var(--rule);background:var(--paper);font-size:.875rem;font-weight:300;line-height:1.75;color:var(--ink-muted);display:none;animation:panelIn .3s ease}
+.arc-detail.open{display:block}
+@keyframes panelIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.arc-detail-title{font-weight:500;color:var(--ink);margin-bottom:.3rem;font-size:.9rem}
+.arc-loop{margin-top:1.2rem;padding:1rem 1.3rem;background:var(--purple-50);border-left:3px solid var(--purple-200);border-radius:0 3px 3px 0}
+.arc-loop-label{font-size:.78rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--purple-800);margin-bottom:.3rem}
+.arc-loop-body{font-size:.875rem;font-weight:300;line-height:1.7;color:var(--purple-600)}
+
+/* ═══ SECTION 6: FACILITATOR ═══ */
+.fac-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem}
+.fac-card{padding:1.4rem 1.5rem;border:1px solid var(--rule);background:var(--paper-2);border-radius:2px}
+.fac-card-title{font-size:.85rem;font-weight:500;color:var(--accent);margin-bottom:.5rem;letter-spacing:.03em}
+.fac-card-body{font-size:.875rem;font-weight:300;line-height:1.75;color:var(--ink-muted)}
+.holding-diagram{margin-top:1.5rem;padding:1.5rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px}
+.holding-title{font-size:.8rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:1rem;text-align:center}
+.holding-row{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.holding-bar{flex:1;height:32px;border-radius:3px;display:flex;align-items:center;padding:0 1rem;font-size:.78rem;font-weight:400;color:var(--ink-muted);position:relative;overflow:hidden}
+.holding-bar .fac-fill{position:absolute;left:0;top:0;bottom:0;transition:width 1.2s cubic-bezier(.16,1,.3,1)}
+.holding-bar span{position:relative;z-index:1}
+.holding-label{width:140px;flex-shrink:0;font-size:.82rem;font-style:italic;color:var(--ink-faint);text-align:right}
+
+/* ═══ SECTION 7: SUBJECT MATTER ═══ */
+.subject-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem}
+.subject-card{padding:1.4rem 1.5rem;border:1px solid var(--rule);border-radius:2px}
+.subject-card.heavy{background:#fff9f0;border-color:var(--amber-200)}
+.subject-card.open-utility{background:#f8f0ff;border-color:var(--purple-200)}
+.subject-card-title{font-size:.85rem;font-weight:500;margin-bottom:.5rem}
+.subject-card.heavy .subject-card-title{color:var(--amber-800)}
+.subject-card.open-utility .subject-card-title{color:var(--purple-800)}
+.subject-card-body{font-size:.875rem;font-weight:300;line-height:1.75;color:var(--ink-muted)}
+
+/* ═══ SECTION 8: NOTES ═══ */
+.notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin-top:1rem}
+.note-card{padding:1.2rem 1.3rem 1.2rem 1.5rem;border-left:3px solid var(--rule);background:var(--paper-2);transition:border-color .2s,background .2s}
+.note-card:hover{border-color:var(--accent-light);background:var(--teal-50)}
+.note-card.purple{border-color:var(--purple-200);background:var(--purple-50);grid-column:1/-1}
+.note-card.purple:hover{border-color:var(--purple-600)}
+.note-head{font-size:.88rem;font-weight:500;color:var(--accent);margin-bottom:.35rem}
+.note-card.purple .note-head{color:var(--purple-800)}
+.note-body{font-size:.875rem;font-weight:300;line-height:1.7;color:var(--ink-muted)}
+.note-card.purple .note-body{color:var(--purple-600)}
+
+/* CLOSING */
+.closing{padding:5rem 2.5rem 6rem;max-width:1100px;margin:0 auto;text-align:center}
+.closing-line{font-family:'Playfair Display',serif;font-size:clamp(1.1rem,2.2vw,1.45rem);font-style:italic;font-weight:400;line-height:1.6;color:var(--accent);max-width:700px;margin:0 auto;padding:2.5rem 0;border-top:1px solid var(--teal-200);border-bottom:1px solid var(--teal-200)}
+
+footer{text-align:center;padding:1.5rem;font-size:.75rem;color:var(--ink-faint);border-top:1px solid var(--rule)}
+
+/* RESPONSIVE */
+@media(max-width:720px){
+  nav{padding:0 1.2rem}.nav-links{display:none}
+  .page-section{padding:3rem 1.2rem}
+  .forces-grid,.fac-grid,.subject-grid,.notes-grid,.stall-grid{grid-template-columns:1fr}
+  .arc-stages{flex-direction:column}.arc-arrow{transform:rotate(90deg)}
+  .note-card.purple{grid-column:1}.cap-label{width:90px}.cap-note{display:none}
+  .holding-row{flex-direction:column;align-items:flex-start}.holding-label{text-align:left}
+  .hero{padding:0 1.2rem 3rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-title">The Relational Safety Field</span>
+  <ul class="nav-links">
+    <li><a href="#field">The Field</a></li>
+    <li><a href="#spectrum">Safety</a></li>
+    <li><a href="#capacity">Capacity</a></li>
+    <li><a href="#arc">Development</a></li>
+    <li><a href="#facilitator">Facilitator</a></li>
+    <li><a href="#material">Material</a></li>
+    <li><a href="#notes">Notes</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg">
+    <div class="hero-quad-bg">
+      <div class="hq"></div><div class="hq"></div>
+      <div class="hq"></div><div class="hq"></div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">A relational framework</p>
+    <h1 class="hero-title">The Relational<br><em>Safety Field</em></h1>
+    <p class="hero-desc">A tool for intentional container design. How perceived safety in group settings is shaped by three interacting forces — shared context, interaction speed, and individual inner capacity — and how well-matched containers cultivate the very capacity they require, across the arc from facilitator to participant to co-creator.</p>
+    <p class="hero-scroll">Scroll to explore</p>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- SUMMARY -->
+<section class="page-section" id="summary">
+  <div class="reveal">
+    <p class="section-label">At a glance</p>
+    <h2 class="section-title">One-page summary</h2>
+    <p class="section-body">A reference view of the complete model. Each card links into the full section below.</p>
+  </div>
+  <div class="reveal" style="transition-delay:.08s;display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem">
+    <a href="#field" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">The field</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Continuous, not categorical</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">A space of two axes — shared context and interaction speed. Position is fluid. Most containers begin as open fields and move toward held as context and structure are introduced.</p>
+    </a>
+    <a href="#forces" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Three forces</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Shared context · Speed · Capacity</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Each operates independently. Individual capacity is unusual: it is both a condition that shapes the field and an outcome that the field cultivates.</p>
+    </a>
+    <a href="#roles" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Roles</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Facilitator → participant → co-creator</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">The binary of facilitator and participant dissolves in open fields. Co-creators actively shape and hold the field alongside the facilitator.</p>
+    </a>
+    <a href="#spectrum" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Safety spectrum</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Held → scaffolded → friction → open</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Most externally supported to most demanding of inner resource. Open field is not inherently unsafe — it is the least supported. Safety is a function of match, not position.</p>
+    </a>
+    <a href="#capacity" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Individual capacity</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Fluid, not fixed. No ceiling.</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Stalls at two extremes: overwhelm (too open, shutdown) and stagnation (too comfortable, no stretch). High activation — including joy and play — can be as dysregulating as distress.</p>
+    </a>
+    <a href="#arc" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Developmental arc</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Open-ended, non-linear, no ceiling</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Containers cultivate the capacity they require. Returning to a held container is not regression. The world keeps generating new material — the arc has no destination.</p>
+    </a>
+    <a href="#facilitator" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Facilitator & holding</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Centralised → distributed</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Structured containers centralise holding. Open fields distribute it. Total field capacity is not additive — one dysregulation can cascade; one steady presence can buffer.</p>
+    </a>
+    <a href="#scale" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Group scale</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">2 to ~150</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Larger groups have more dynamism and perceived risk. Subgroups can fragment or stagnate. Beyond 150, shared relationship breaks down structurally.</p>
+    </a>
+    <a href="#time" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Time & context</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Credit builds, decays, leaves residue</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Shared context accumulates across sessions and decays with gaps — but prior relationship enables faster re-establishment than starting from zero.</p>
+    </a>
+    <a href="#rupture" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Rupture & repair</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Part of the process, not a failure</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Micro-tears build capacity. Move toward held → repair → integrate. Distinguish a recoverable stretch from a full severance. Easy exit always available.</p>
+    </a>
+    <a href="#material" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Subject matter</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Activation level, not valence</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Heavy material calls for more support. Open fields surface what contained ones won't. Joy and play can also dysregulate — what matters is activation level, not whether the emotion is pleasant.</p>
+    </a>
+    <a href="#ethics" style="text-decoration:none;display:block;padding:1.1rem 1.2rem;background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--accent-light)'" onmouseout="this.style.borderColor='var(--rule)'">
+      <p style="font-size:.75rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Ethics</p>
+      <p style="font-size:.82rem;font-weight:500;color:var(--ink);margin-bottom:.3rem">Informed consent · Good faith · Repair</p>
+      <p style="font-size:.78rem;font-weight:300;color:var(--ink-muted);line-height:1.55">Responsibility is shared but weighted toward the facilitator. Name the role and space; hold the framework lightly. Transparency serves safety — over-explanation pulls people out of experience.</p>
+    </a>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ROLES -->
+<section class="page-section" id="roles">
+  <div class="reveal">
+    <p class="section-label">02 — Roles in the field</p>
+    <h2 class="section-title">Facilitator → participant → co-creator</h2>
+    <p class="section-body">This model is a tool for intentional design — for people who are consciously constructing relational conditions, not describing fields that emerge accidentally. Within those designed fields, roles are not fixed. They exist on a spectrum that mirrors the field itself.</p>
+  </div>
+  <div class="reveal" style="transition-delay:.08s;display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:1.5rem">
+    <div style="padding:1.5rem;background:var(--teal-50);border:1px solid var(--teal-200)">
+      <p style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--teal-800);margin-bottom:.5rem">Facilitator</p>
+      <p style="font-size:.82rem;font-weight:300;line-height:1.65;color:var(--teal-600)">Holds primary responsibility for designing and maintaining the container. In structured fields, they are the central source of holding — the person others look to when something ruptures. Their capacity determines which containers they can credibly offer.</p>
+    </div>
+    <div style="padding:1.5rem;background:var(--blue-50);border:1px solid var(--blue-200)">
+      <p style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--blue-800);margin-bottom:.5rem">Participant</p>
+      <p style="font-size:.82rem;font-weight:300;line-height:1.65;color:var(--blue-600)">Engages within the conditions set by the facilitator. Brings their own capacity to bear on the material. As shared context builds and trust deepens, the participant role becomes increasingly active — less receiving, more contributing to the quality of the field.</p>
+    </div>
+    <div style="padding:1.5rem;background:var(--purple-50);border:1px solid var(--purple-200)">
+      <p style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--purple-800);margin-bottom:.5rem">Co-creator</p>
+      <p style="font-size:.82rem;font-weight:300;line-height:1.65;color:var(--purple-600)">In open fields, the facilitator/participant binary dissolves. People with sufficient capacity step into active roles — offering presence, absorbing intensity, helping others return to safety. The co-creator doesn't just occupy the field; they help make it what it is. This is the deepest expression of individual capacity.</p>
+    </div>
+  </div>
+  <div style="padding:1rem 1.3rem;background:var(--paper-2);border-left:3px solid var(--rule);font-size:.875rem;font-weight:300;line-height:1.75;color:var(--ink-muted)" class="reveal" style="transition-delay:.12s">
+    <strong style="font-weight:500;color:var(--ink)">The arc of roles mirrors the developmental arc.</strong> A person typically enters a field as a participant, develops capacity through well-matched containers, and — over time — becomes capable of co-creating the field for others. The facilitator's own developmental arc often involves moving from tightly structured containers toward ones where they too must co-create rather than direct.
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 03: THE CONTINUOUS FIELD ═══ -->
+<section class="page-section" id="field">
+  <div class="reveal">
+    <p class="section-label">03 — The continuous field</p>
+    <h2 class="section-title">A space you move within, not rooms you enter</h2>
+    <p class="section-body">The quadrant names are orientation points, not fixed categories. The space is continuous — you can find yourself anywhere within it, and most containers begin as open fields before the introduction of context or structure moves them toward something more held.</p>
+  </div>
+  <div class="field-wrap reveal" style="transition-delay:.1s">
+    <div style="display:flex;gap:0">
+      <div class="axis-label-y">
+        <span>Less shared context</span>
+        <span>More shared context</span>
+      </div>
+      <div style="flex:1">
+        <div class="quad-grid-simple">
+          <div class="qgs-card teal" onclick="selectQuad(this,'teal')">
+            <div class="qgs-name">Held container</div>
+            <div class="qgs-sub">Shared ground + structured pace</div>
+          </div>
+          <div class="qgs-card amber" onclick="selectQuad(this,'amber')">
+            <div class="qgs-name">Scaffolded encounter</div>
+            <div class="qgs-sub">No shared ground, slow structure</div>
+          </div>
+          <div class="qgs-card blue" onclick="selectQuad(this,'blue')">
+            <div class="qgs-name">Generative friction</div>
+            <div class="qgs-sub">Shared context, free-form speed</div>
+          </div>
+          <div class="qgs-card red active" onclick="selectQuad(this,'red')">
+            <div class="qgs-name">Open field</div>
+            <div class="qgs-sub">No shared ground, no structure</div>
+          </div>
+        </div>
+        <div class="axis-label-x">
+          <span>\u2190 Structured / slow</span>
+          <span>Free-form / fast \u2192</span>
+        </div>
+      </div>
+    </div>
+    <div class="field-info fi-red" id="fieldInfo">
+      <p class="field-info-name" id="fiName">Open field</p>
+      <p class="field-info-body" id="fiBody">The least externally supported condition. Highest demand on individual and collective inner resource. Holding is distributed — no designated holder means the field depends on who steps into that role. For those with deep capacity, it can be liberating; for those without, it can overwhelm.</p>
+    </div>
+    <p class="field-hint">Most containers start as open fields. Context and structure move them toward held.</p>
+  </div></section>
+
+<hr class="divider">
+
+<!-- ═══ 02: THREE FORCES ═══ -->
+<section class="page-section" id="forces">
+  <div class="reveal">
+    <p class="section-label">04 — The three forces</p>
+    <h2 class="section-title">What shapes the field</h2>
+    <p class="section-body">Each force operates independently, but their interaction determines where in the field a group finds itself. Individual capacity is unusual — it is both a condition that shapes the field and an outcome that the field can cultivate.</p>
+  </div>
+  <div class="forces-grid reveal" style="transition-delay:.1s">
+    <div class="force-card">
+      <p class="force-name">Shared context</p>
+      <p class="force-body">Common materials, norms, or framing a group enters with — or builds within a session. Creates a shared interpretive layer that catches misreadings before they escalate. Can shift mid-session as context accumulates.</p>
+    </div>
+    <div class="force-card">
+      <p class="force-name">Interaction speed</p>
+      <p class="force-body">How fast topics and feelings move through the space. Structure slows the pace and creates time to breathe between moments. Free-form allows rapid movement — generative when capacity is present, overwhelming when it isn't.</p>
+    </div>
+    <div class="force-card">
+      <p class="force-name">Individual capacity</p>
+      <p class="force-body">Each person's inner resource — depth of practice, emotional stability, experience staying centred under pressure. Determines how much of any position in the field they can hold. Also what well-matched containers cultivate over time.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 03: SAFETY SPECTRUM ═══ -->
+<section class="page-section" id="spectrum">
+  <div class="reveal">
+    <p class="section-label">05 — The safety spectrum</p>
+    <h2 class="section-title">From most held to most open</h2>
+    <p class="section-body">The quadrant positions map onto a spectrum of how much external support is present. This is distinct from the developmental arc — it describes the conditions of the space, not the capacity of the individuals within it.</p>
+  </div>
+  <div class="spectrum-wrap reveal" style="transition-delay:.1s">
+    <div class="spectrum-bar">
+      <div class="spec-seg teal">Held<br>container</div>
+      <div class="spec-seg amber">Scaffolded<br>encounter</div>
+      <div class="spec-seg blue">Generative<br>friction</div>
+      <div class="spec-seg red">Open<br>field</div>
+    </div>
+    <div class="spectrum-axis">
+      <span>Most externally supported</span>
+      <span>Most demanding of inner resource</span>
+    </div>
+    <div class="spectrum-note" style="margin-top:1.2rem">
+      <strong>Open field is not inherently dangerous</strong> — it is the least externally supported condition. For individuals with sufficient inner capacity, it can be genuinely liberating. The risk is a function of whether the distributed holding capacity in the room is actually there.
+    </div>
+    <div class="spectrum-note" style="margin-top:.7rem;border-left-color:var(--blue-200)">
+      <strong>Online vs in-person:</strong> physical co-presence adds a layer of bodily risk and bodily safety that digital space removes. Online, bodies are not in shared space — which lowers one dimension of threat but also removes embodied resonance and the possibility of physical co-regulation.
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 04: INDIVIDUAL CAPACITY ═══ -->
+<section class="page-section" id="capacity">
+  <div class="reveal">
+    <p class="section-label">06 — Individual capacity</p>
+    <h2 class="section-title">What each person brings — and what can stall</h2>
+    <p class="section-body">The same external conditions land differently depending on inner resource. Capacity is fluid, non-linear, and context-dependent. Two failure modes can interrupt its development.</p>
+  </div>
+  <div class="capacity-rows reveal" style="transition-delay:.1s">
+    <div class="cap-row">
+      <span class="cap-label">Early practice</span>
+      <div class="cap-track"><div class="cap-fill" data-width="22" style="background:#EF9F27"></div></div>
+      <span class="cap-note" style="color:#854F0B;font-style:italic">Needs held container</span>
+    </div>
+    <div class="cap-row">
+      <span class="cap-label">Developing</span>
+      <div class="cap-track"><div class="cap-fill" data-width="50" style="background:#378ADD"></div></div>
+      <span class="cap-note" style="color:#185FA5;font-style:italic">Navigates scaffolded encounter</span>
+    </div>
+    <div class="cap-row">
+      <span class="cap-label">Experienced</span>
+      <div class="cap-track"><div class="cap-fill" data-width="78" style="background:#1D9E75"></div></div>
+      <span class="cap-note" style="color:#085041;font-style:italic">Holds generative friction</span>
+    </div>
+    <div class="cap-row">
+      <span class="cap-label">Deep capacity</span>
+      <div class="cap-track"><div class="cap-fill" data-width="96" style="background:#7F77DD"></div></div>
+      <span class="cap-note" style="color:#3C3489;font-style:italic">Offers stabilising presence in open field</span>
+    </div>
+  </div>
+  <p class="reveal" style="font-size:.78rem;font-style:italic;color:var(--ink-faint);margin-top:.8rem;transition-delay:.2s">Illustrative, not prescriptive. A person may hold deep capacity in one context and need a held container in another.</p>
+
+  <div class="stall-grid reveal" style="transition-delay:.2s">
+    <div class="stall-card over">
+      <p class="stall-head">Stall by overwhelm</p>
+      <p class="stall-body">When the container exceeds nervous system capacity, the person cannot take in new information — they shut down or dissociate. Growth stops because the system is in protection mode. The container was too open, too fast, or the material too heavy.</p>
+    </div>
+    <div class="stall-card stag">
+      <p class="stall-head">Stall by stagnation</p>
+      <p class="stall-body">When conditions have been too comfortable for too long, there is no need to stretch — no growth edge, no new demand. Capacity plateaus. The container was well-matched once but has become a comfort zone rather than a developmental space.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 05: DEVELOPMENTAL ARC ═══ -->
+<section class="page-section" id="arc">
+  <div class="reveal">
+    <p class="section-label">07 — The developmental arc</p>
+    <h2 class="section-title">Capacity cultivated through containers</h2>
+    <p class="section-body">The developmental arc is separate from the safety spectrum. It describes how individual capacity grows through well-matched exposure — and how different containers develop different dimensions of that capacity. The arc is open-ended, not culminating: capacity has no ceiling, because the world keeps generating new material to meet. The arc is also not one-directional — returning to a held container is not regression, it is sometimes exactly what a nervous system needs.</p>
+  </div>
+  <div class="arc-outer reveal" style="transition-delay:.1s">
+    <p class="arc-note-top">Click any stage to expand — capacity grows through each, in different ways</p>
+    <div class="arc-stages">
+      <div class="arc-stage teal" onclick="toggleArc('teal')">
+        <div class="arc-sname">Held<br>container</div>
+        <div class="arc-ssub">secure base</div>
+      </div>
+      <div class="arc-arrow">→</div>
+      <div class="arc-stage amber" onclick="toggleArc('amber')">
+        <div class="arc-sname">Scaffolded<br>encounter</div>
+        <div class="arc-ssub">structured risk</div>
+      </div>
+      <div class="arc-arrow">→</div>
+      <div class="arc-stage blue" onclick="toggleArc('blue')">
+        <div class="arc-sname">Generative<br>friction</div>
+        <div class="arc-ssub">known ground, speed</div>
+      </div>
+      <div class="arc-arrow">→</div>
+      <div class="arc-stage red" onclick="toggleArc('red')">
+        <div class="arc-sname">Open<br>field</div>
+        <div class="arc-ssub">full openness</div>
+      </div>
+    </div>
+
+    <div class="arc-detail" id="arc-teal">
+      <p class="arc-detail-title" style="color:var(--teal-800)">Held container — what it cultivates</p>
+      <p>The secure base. A new practice is best first introduced here — the shared context and slow pace allow something unfamiliar to be met without overwhelm. What grows in this container: the capacity to be witnessed, to let material surface, to trust a held space. It also develops the nervous system's baseline sense of what safety feels like — a reference point that can be returned to when more open conditions become depleting.</p>
+    </div>
+    <div class="arc-detail" id="arc-amber">
+      <p class="arc-detail-title" style="color:var(--amber-800)">Scaffolded encounter — what it cultivates</p>
+      <p>Structured risk. The growth here comes from meeting difference — people outside your context, traditions, or relational assumptions — within a form that holds the encounter steady. What grows: the capacity to stay present with the unknown without the reassurance of shared ground, and to trust structure as a temporary substitute for familiarity. This is where many people first discover that safety can be designed rather than assumed.</p>
+    </div>
+    <div class="arc-detail" id="arc-blue">
+      <p class="arc-detail-title" style="color:var(--blue-800)">Generative friction — what it cultivates</p>
+      <p>The capacity to hold speed and conflict within relationship. Because shared context is present, disagreement is legible — intent can be read even when words are imperfect. What grows: tolerance for friction, the ability to repair without collapse, and the skill of moving fast without losing the other. The risk here is that the shared frame becomes an echo chamber — the most developed practitioners in this container have explicit practices for re-introducing productive strangeness.</p>
+    </div>
+    <div class="arc-detail" id="arc-red">
+      <p class="arc-detail-title" style="color:var(--red-800)">Open field — what it cultivates</p>
+      <p>The capacity to be one's own container — and eventually, to offer that presence as a stabilising resource for others. This is the destination of deep practice, not the starting point. What grows: the ability to meet radical difference, hold ambiguity without collapsing into certainty, find grounding without external structure, and — at the furthest edge — to become part of the distributed holding capacity that makes the open field survivable for those with less resource.</p>
+    </div>
+
+    <div class="arc-loop">
+      <p class="arc-loop-label">The loop</p>
+      <p class="arc-loop-body">Container matches current capacity → person feels safe enough to stretch → capacity expands → person can tolerate a more open condition. But the arc is not a ladder, and it has no ceiling. People move back and forth depending on material, life circumstance, and the nervous system's state on a given day. The environment keeps offering new verticals — new cultural conditions, new collective challenges — so there is always new territory for capacity to meet. Returning to a held container is not regression; sometimes it is exactly the intelligence of a well-calibrated system.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 06: FACILITATOR ═══ -->
+<section class="page-section" id="facilitator">
+  <div class="reveal">
+    <p class="section-label">08 — The facilitator inside the model</p>
+    <h2 class="section-title">Distributed vs centralised holding</h2>
+    <p class="section-body">In structured containers, holding responsibility is centralised — when something ruptures, people look to the facilitator for safety. In open fields, holding is distributed across whoever has the capacity to offer it. The facilitator's own capacity determines which containers they can credibly hold — and moving toward less structured facilitation is its own developmental arc.</p>
+  </div>
+
+  <div class="holding-diagram reveal" style="transition-delay:.05s">
+    <p class="holding-title">Where holding responsibility sits</p>
+    <div class="holding-row">
+      <span class="holding-label">Held container</span>
+      <div class="holding-bar" style="background:var(--teal-50);border:1px solid var(--teal-200)">
+        <div class="fac-fill" data-width="85" style="background:var(--teal-200);opacity:.6"></div>
+        <span>Facilitator holds most of the field</span>
+      </div>
+    </div>
+    <div class="holding-row">
+      <span class="holding-label">Scaffolded encounter</span>
+      <div class="holding-bar" style="background:var(--amber-50);border:1px solid var(--amber-200)">
+        <div class="fac-fill" data-width="65" style="background:var(--amber-200);opacity:.6"></div>
+        <span>Facilitator + structure share the holding</span>
+      </div>
+    </div>
+    <div class="holding-row">
+      <span class="holding-label">Generative friction</span>
+      <div class="holding-bar" style="background:var(--blue-50);border:1px solid var(--blue-200)">
+        <div class="fac-fill" data-width="40" style="background:var(--blue-200);opacity:.6"></div>
+        <span>Shared context does much of the work</span>
+      </div>
+    </div>
+    <div class="holding-row">
+      <span class="holding-label">Open field</span>
+      <div class="holding-bar" style="background:var(--red-50);border:1px solid var(--red-200)">
+        <div class="fac-fill" data-width="15" style="background:var(--red-200);opacity:.6"></div>
+        <span>Distributed — individual capacities carry it</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="fac-grid reveal" style="transition-delay:.15s">
+    <div class="fac-card">
+      <p class="fac-card-title">Total field capacity</p>
+      <p class="fac-card-body">The aggregate holding resource across all individuals present. Not simply additive — one person's dysregulation can cascade, triggering others whose capacity is close to its edge. Conversely, individuals with high capacity can buffer the field, absorbing intensity before it reaches those with less resource.</p>
+    </div>
+    <div class="fac-card">
+      <p class="fac-card-title">The facilitator's own arc</p>
+      <p class="fac-card-body">Moving from structured to unstructured facilitation is a developmental arc in itself — a different skill set, not simply more experience. The structure of a held container does some of the holding work for the facilitator. In an open field, they must source that steadiness entirely from their own inner resource — which is why open-field facilitation requires the most capacity.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 07: SUBJECT MATTER ═══ -->
+<section class="page-section" id="material">
+  <div class="reveal">
+    <p class="section-label">09 — Subject matter weight</p>
+    <h2 class="section-title">The content has its own demand</h2>
+    <p class="section-body">The material being held is not neutral. What matters is not whether the emotion is pleasant or painful — it is the level of activation it produces. Joy, play, and celebration can be as dysregulating as grief or conflict for some nervous systems. The relevant question is always: can the total field capacity hold what this material stirs?</p>
+  </div>
+  <div class="subject-grid reveal" style="transition-delay:.1s">
+    <div class="subject-card heavy">
+      <p class="subject-card-title">High activation → more support needed</p>
+      <p class="subject-card-body">Trauma, grief, deep conflict, intense joy, play, or celebration — anything that produces high nervous system activation — increases the demand on field capacity. Valence (pleasant vs unpleasant) is not the relevant variable. A group that can hold grief may not be able to hold ecstatic play, and vice versa. Match the container to the activation level, not the assumed emotional weight.</p>
+    </div>
+    <div class="subject-card open-utility">
+      <p class="subject-card-title">Open field → its own utility for surfacing</p>
+      <p class="subject-card-body">A more open field creates more space for material to arise spontaneously — emotion surfaces, the unpredictable becomes available, things that wouldn't emerge in structured conditions come forward. This unpredictability is not only a risk: it is also what gives the open field its particular power. The condition is that the total field capacity can hold whatever arises — pleasant or otherwise.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 08: GROUP SCALE ═══ -->
+<section class="page-section" id="scale">
+  <div class="reveal">
+    <p class="section-label">10 — Group scale</p>
+    <h2 class="section-title">From dyad to the edge of community</h2>
+    <p class="section-body">The field operates across a range of two to roughly 150 people — Dunbar's number, the commonly cited threshold at which shared relationship and mutual recognition begin to break down. Scale changes the dynamics of holding, contagion, and safety in significant ways.</p>
+  </div>
+  <div class="fac-grid reveal" style="transition-delay:.05s">
+    <div class="fac-card">
+      <p class="fac-card-title">The dyad — minimum unit</p>
+      <p class="fac-card-body">Two people is the most intimate version of the field. Holding is entirely mutual — each person is simultaneously participant and container for the other. There is no distributed field to absorb dysregulation; a rupture in a dyad is a rupture of the whole container. This makes dyadic work both the most intensive and the most exposed form of relational holding.</p>
+    </div>
+    <div class="fac-card">
+      <p class="fac-card-title">Scale and dynamism</p>
+      <p class="fac-card-body">As group size grows, dynamism increases — more perspectives, more activation, more potential for the unpredictable to arise. This generally increases perceived unsafety. A known facilitator becomes more valuable as a stabilising anchor in larger groups, because individual members cannot hold the whole field in view and the distributed holding becomes harder to coordinate.</p>
+    </div>
+    <div class="fac-card">
+      <p class="fac-card-title">Subgroup fragmentation</p>
+      <p class="fac-card-body">When subgroups form within a larger field, the risk is fragmentation — people feeling uninvolved or alone at the periphery. A subtler risk is the stagnation cluster: a small group held together by implicit fear rather than genuine connection, whose members don't expand into the wider field. The cluster feels safe but functions as a container for avoidance rather than growth.</p>
+    </div>
+    <div class="fac-card">
+      <p class="fac-card-title">150 — the outer edge</p>
+      <p class="fac-card-body">Beyond roughly 150, shared relationship becomes structurally difficult to maintain. Anonymity increases, the sense of mutual recognition fades, and the field loses its coherence as a relational space. Containers operating above this threshold rely more heavily on formal structure, role differentiation, and institutional scaffolding to compensate for the loss of the relational fabric.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 09: TIME AND CONTEXT DECAY ═══ -->
+<section class="page-section" id="time">
+  <div class="reveal">
+    <p class="section-label">11 — Time and context decay</p>
+    <h2 class="section-title">Shared context accumulates, and fades</h2>
+    <p class="section-body">Shared context is not static. It builds across sessions, decays between them, and leaves a residue that makes re-establishment faster than starting from scratch. Capacity, by contrast, has no ceiling — the environment itself keeps generating new material to meet.</p>
+  </div>
+  <div class="reveal" style="transition-delay:.08s">
+    <div style="background:var(--paper-2);border:1px solid var(--rule);border-radius:3px;padding:1.8rem 2rem;margin-bottom:1.5rem">
+      <p style="font-size:.8rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:1.2rem;text-align:center">Shared context across time — illustrative</p>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:80px;margin-bottom:.6rem">
+        <div style="flex:1;background:var(--teal-200);opacity:.7;border-radius:2px 2px 0 0;height:30%"></div>
+        <div style="flex:1;background:var(--teal-200);opacity:.7;border-radius:2px 2px 0 0;height:52%"></div>
+        <div style="flex:1;background:var(--teal-200);opacity:.7;border-radius:2px 2px 0 0;height:70%"></div>
+        <div style="flex:1;background:var(--teal-200);opacity:.7;border-radius:2px 2px 0 0;height:85%"></div>
+        <div style="flex:1;background:var(--teal-200);opacity:.7;border-radius:2px 2px 0 0;height:95%"></div>
+        <div style="flex:1;background:var(--rule);border-radius:2px 2px 0 0;height:95%;position:relative"><span style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ink-faint);white-space:nowrap">gap</span></div>
+        <div style="flex:1;background:var(--rule);border-radius:2px 2px 0 0;height:80%"></div>
+        <div style="flex:1;background:var(--rule);border-radius:2px 2px 0 0;height:65%"></div>
+        <div style="flex:1;background:var(--amber-200);opacity:.8;border-radius:2px 2px 0 0;height:52%"><span style="font-size:8px"></span></div>
+        <div style="flex:1;background:var(--amber-200);opacity:.8;border-radius:2px 2px 0 0;height:66%"></div>
+        <div style="flex:1;background:var(--amber-200);opacity:.8;border-radius:2px 2px 0 0;height:80%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--ink-faint);font-style:italic;border-top:1px solid var(--rule);padding-top:.5rem">
+        <span>Sessions 1–5: context builds</span>
+        <span>Gap: decay</span>
+        <span>Sessions 6–8: faster re-establishment</span>
+      </div>
+    </div>
+    <div class="fac-grid">
+      <div class="fac-card">
+        <p class="fac-card-title">Credit and decay</p>
+        <p class="fac-card-body">Shared context accumulates across consecutive sessions — each one builds on the last. But leave too long a gap and the credit diminishes. The rate of decay is not total: prior relationship leaves a memory that allows a group to re-establish familiarity faster than they could the first time, even after a long absence.</p>
+      </div>
+      <div class="fac-card">
+        <p class="fac-card-title">Capacity has no ceiling</p>
+        <p class="fac-card-body">Unlike shared context, individual capacity does not plateau with repeated exposure. The environment keeps generating new verticals — new cultural conditions, new collective challenges, new relational territories. There is always something to meet that requires new growth. Capacity is an ongoing unfolding, not a destination.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 10: RUPTURE AND REPAIR ═══ -->
+<section class="page-section" id="rupture">
+  <div class="reveal">
+    <p class="section-label">12 — Rupture and repair</p>
+    <h2 class="section-title">When the container fails — and what follows</h2>
+    <p class="section-body">Rupture is not a failure of the model — it is part of the process. When something goes beyond what the field can hold, the response matters more than the rupture itself. Repair, when it happens, builds capacity in ways that smooth containment cannot.</p>
+  </div>
+  <div class="reveal" style="transition-delay:.08s">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+      <div style="padding:1.2rem 1.3rem;background:var(--red-50);border:1px solid var(--red-200);border-radius:2px">
+        <p style="font-size:.82rem;font-weight:500;color:var(--red-800);margin-bottom:.35rem">Rupture</p>
+        <p style="font-size:.82rem;font-weight:300;line-height:1.65;color:var(--ink-muted)">Something exceeds what the field can hold. One or more people move into dysregulation. The container as designed is no longer adequate.</p>
+      </div>
+      <div style="padding:1.2rem 1.3rem;background:var(--amber-50);border:1px solid var(--amber-200);border-radius:2px">
+        <p style="font-size:.82rem;font-weight:500;color:var(--amber-800);margin-bottom:.35rem">Move toward held</p>
+        <p style="font-size:.82rem;font-weight:300;line-height:1.65;color:var(--ink-muted)">The immediate response is to move back toward more supported conditions — slower pacing, more structure, more direct facilitator presence — until the person or group returns to safety.</p>
+      </div>
+      <div style="padding:1.2rem 1.3rem;background:var(--teal-50);border:1px solid var(--teal-200);border-radius:2px">
+        <p style="font-size:.82rem;font-weight:500;color:var(--teal-800);margin-bottom:.35rem">Repair and integration</p>
+        <p style="font-size:.82rem;font-weight:300;line-height:1.65;color:var(--ink-muted)">Over time, the rupture-and-repair cycle expands capacity. The system learns it can be stretched and recover — and that knowledge is itself a resource for future exposure.</p>
+      </div>
+    </div>
+    <div style="padding:1.2rem 1.5rem;background:var(--purple-50);border-left:3px solid var(--purple-200);border-radius:0 3px 3px 0">
+      <p style="font-size:.8rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--purple-800);margin-bottom:.3rem">The muscle metaphor</p>
+      <p style="font-size:.875rem;font-weight:300;line-height:1.75;color:var(--purple-600)">Growth requires micro-tears — the muscle stretched past its current limit, then allowed to heal stronger. The critical distinction is between a stretch that recovers and a severance that doesn't. As long as the rupture hasn't completely exceeded the system's capacity to repair, it is part of the growth process. More material, more processing time — but ultimately a larger capacity than before. Easy exit should always be available so that full severance can be avoided.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 11: NAMING AND AWARENESS ═══ -->
+<section class="page-section" id="naming">
+  <div class="reveal">
+    <p class="section-label">13 — Naming and meta-awareness</p>
+    <h2 class="section-title">What to disclose, and what to hold lightly</h2>
+    <p class="section-body">Naming the container changes the field. The question is not whether to be transparent, but what kind of transparency serves the participants — and what pulls them out of the experience and into the analysis of it.</p>
+  </div>
+  <div class="subject-grid reveal" style="transition-delay:.08s">
+    <div class="subject-card heavy" style="background:var(--teal-50);border-color:var(--teal-200)">
+      <p class="subject-card-title" style="color:var(--teal-800)">What is helpful to name</p>
+      <p class="subject-card-body">The facilitator's role, the type of space being held, and what participants can expect — including who to go to if something feels wrong. This kind of transparency produces safety. Knowing that the facilitator is aware of the field they're holding is itself a source of containment. In open fields especially, where responsibility is more diffuse, participants should know enough to navigate if something arises.</p>
+    </div>
+    <div class="subject-card open-utility" style="background:var(--amber-50);border-color:var(--amber-200)">
+      <p class="subject-card-title" style="color:var(--amber-800)">What risks pulling people out</p>
+      <p class="subject-card-body">Over-explaining the framework — the quadrants, the axes, the theory — can invite participants into meta-awareness at the expense of being in the experience. If they are thinking about what kind of container they are in, they may not be able to give themselves to the process fully. The model is a tool for the facilitator's orientation, not necessarily content to be transmitted.</p>
+    </div>
+  </div>
+  <div style="margin-top:1rem;padding:1rem 1.3rem;background:var(--paper-2);border-left:3px solid var(--rule);font-size:.875rem;font-weight:300;line-height:1.75;color:var(--ink-muted)" class="reveal" style="transition-delay:.12s">
+    <strong style="font-weight:500;color:var(--ink)">On asymmetric awareness:</strong> A facilitator who understands the model working with a group that doesn't creates a power differential. This is not inherently problematic — most facilitation involves asymmetric knowledge — but it carries an ethical responsibility toward transparency wherever transparency serves the participants' safety and autonomy.
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ 12: CULTURAL UNIVERSALS ═══ -->
+<section class="page-section" id="culture">
+  <div class="reveal">
+    <p class="section-label">14 — Cultural context</p>
+    <h2 class="section-title">What is universal, what is assumed</h2>
+    <p class="section-body">The model may not translate directly across all cultural contexts — baseline assumptions about emotional expression, silence, physical proximity, and relational protocol differ. But the underlying architecture is grounded in something more universal.</p>
+  </div>
+  <div class="fac-grid reveal" style="transition-delay:.08s">
+    <div class="fac-card">
+      <p class="fac-card-title">Bodily safety as the floor</p>
+      <p class="fac-card-body">Below the cultural layer is a more universal substrate: the body's sense of physical safety. This is the deepest and most cross-cultural dimension of the field. Emotional safety is layered above it — shaped by cultural norms around expression, disclosure, and relational conduct — but the bodily foundation is shared.</p>
+    </div>
+    <div class="fac-card">
+      <p class="fac-card-title">Shared context can be built across difference</p>
+      <p class="fac-card-body">Even when people enter from very different cultural starting points, shared context can be built within a session. The process of finding common ground across difference is itself a form of relational work — and one that, when held well, can generate a particularly rich quality of connection precisely because it required more to establish.</p>
+    </div>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- ═══ ethics ═══ -->
+<section class="page-section" id="ethics">
+  <div class="reveal">
+    <p class="section-label">15 — Ethics of mismatch</p>
+    <h2 class="section-title">When conditions exceed capacity</h2>
+    <p class="section-body">When someone is placed in a container that exceeds their capacity and becomes dysregulated, responsibility is shared — but weighted toward the facilitator. The ethical frame rests on three obligations.</p>
+  </div>
+  <div class="reveal" style="transition-delay:.08s;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+    <div style="padding:1.3rem 1.4rem;border:1px solid var(--rule);background:var(--paper-2);border-radius:2px">
+      <p style="font-size:.82rem;font-weight:500;color:var(--accent);margin-bottom:.4rem">Informed consent</p>
+      <p style="font-size:.82rem;font-weight:300;line-height:1.65;color:var(--ink-muted)">Participants were given appropriate context to make an informed decision about the kind of container they were entering. They understood enough to choose.</p>
+    </div>
+    <div style="padding:1.3rem 1.4rem;border:1px solid var(--rule);background:var(--paper-2);border-radius:2px">
+      <p style="font-size:.82rem;font-weight:500;color:var(--accent);margin-bottom:.4rem">Good faith</p>
+      <p style="font-size:.82rem;font-weight:300;line-height:1.65;color:var(--ink-muted)">Everyone — facilitator and participants — was operating in the best interests of all involved. Intent matters to how a rupture is understood and how repair becomes possible.</p>
+    </div>
+    <div style="padding:1.3rem 1.4rem;border:1px solid var(--rule);background:var(--paper-2);border-radius:2px">
+      <p style="font-size:.82rem;font-weight:500;color:var(--accent);margin-bottom:.4rem">Facilitator responsibility</p>
+      <p style="font-size:.82rem;font-weight:300;line-height:1.65;color:var(--ink-muted)">When something goes wrong, the facilitator carries primary responsibility for helping the person return to safety. Easy exit must always be available. The capacity to repair is part of what qualifies someone to hold a field.</p>
+    </div>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- ═══ NOTES ═══ -->
+<section class="page-section" id="notes">
+  <div class="reveal">
+    <p class="section-label">16 — Things worth noting</p>
+    <h2 class="section-title">Using the model as a design tool</h2>
+    <p class="section-body">The model is most useful not as a description of where groups are, but as a tool for deciding what conditions they need — and when and how to shift.</p>
+  </div>
+  <div class="notes-grid reveal" style="transition-delay:.1s">
+    <div class="note-card">
+      <p class="note-head">The familiarity trap</p>
+      <p class="note-body">Groups with high shared context often underestimate how much speed can still overwhelm them. Familiarity is not the same as capacity — and confusing the two is a common source of unnecessary rupture in otherwise well-established communities.</p>
+    </div>
+    <div class="note-card">
+      <p class="note-head">Structure as substitute</p>
+      <p class="note-body">When shared context can't be built in advance, format does the work. The design of the container compensates for absent common ground. This is the core logic of facilitation — and why the facilitator's design choices are unusually consequential in scaffolded encounters.</p>
+    </div>
+    <div class="note-card">
+      <p class="note-head">Moving through the field</p>
+      <p class="note-body">A session can begin in one part of the field and move through it deliberately — introducing context, adjusting pacing, letting structure loosen as trust builds. Knowing where you are in the field is the first step to knowing whether and how to move.</p>
+    </div>
+    <div class="note-card">
+      <p class="note-head">Mismatch as the real risk</p>
+      <p class="note-body">Risk peaks not at any particular position in the field but when conditions don't match the group. Over-containing a high-capacity group can be as limiting as under-containing a new one. The art is in the calibration.</p>
+    </div>
+    <div class="note-card purple">
+      <p class="note-head">The growth edge principle</p>
+      <p class="note-body">The most developmental container is the one just beyond current comfort — safe enough not to overwhelm, open enough to require something new. Too safe stagnates; too open dysregulates. The nervous system needs both: a secure enough base to stretch from, and a real edge to stretch toward. Intentional container design is the practice of finding and holding that edge.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CLOSING -->
+<div class="closing reveal">
+  <p class="closing-line">"A well-matched condition is one where external structure and individual capacity are roughly aligned with the material being held — and where the container itself becomes the site of growth."</p>
+</div>
+
+<footer>The Relational Safety Field</footer>
+
+<script>
+// ── quad selector ──────────────────────────────────────────────────────────
+const quadData = {
+  teal:  { cls:'fi-teal',  name:'Held container',       body:'Shared ground and structured pace. The most externally supported condition. Emotions surface gently — the format creates time to breathe. Processing is co-held by group norms and pacing. Most new practices are best first introduced here.' },
+  amber: { cls:'fi-amber', name:'Scaffolded encounter',  body:'No shared ground, but slow structure compensates. Format holds what familiarity cannot. The facilitator\'s design choices are unusually consequential here — structure is doing the work that common context would otherwise do.' },
+  blue:  { cls:'fi-blue',  name:'Generative friction',   body:'Shared context holds speed. Conflict can be productive and legible — intent can be read even when words are imperfect. Watch for the familiarity trap: shared frame can become echo chamber. The most developed practitioners here actively re-introduce productive strangeness.' },
+  red:   { cls:'fi-red',   name:'Open field',            body:'The least externally supported condition. Highest demand on individual and collective inner resource. Holding is distributed — no designated holder means the field depends on who steps into that role. For those with deep capacity, it can be liberating; for those without, it can overwhelm.' },
+};
+function selectQuad(el, q) {
+  document.querySelectorAll('.qgs-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  const d = quadData[q];
+  const box = document.getElementById('fieldInfo');
+  box.className = 'field-info ' + d.cls;
+  document.getElementById('fiName').textContent = d.name;
+  document.getElementById('fiBody').textContent = d.body;
+}
+
+// ── arc expand ─────────────────────────────────────────────────────────────
+function toggleArc(q) {
+  const el = document.getElementById('arc-' + q);
+  const wasOpen = el.classList.contains('open');
+  document.querySelectorAll('.arc-detail').forEach(e => e.classList.remove('open'));
+  if(!wasOpen) el.classList.add('open');
+}
+
+// ── scroll reveal ───────────────────────────────────────────────────────────
+const reveals = document.querySelectorAll('.reveal');
+let barsAnimated = false;
+let holdingAnimated = false;
+
+function checkReveal() {
+  const vh = window.innerHeight;
+  reveals.forEach(el => {
+    if(el.getBoundingClientRect().top < vh * .88)
+      el.classList.add('visible');
+  });
+
+  // capacity bars
+  if(!barsAnimated) {
+    const sec = document.getElementById('capacity');
+    if(sec && sec.getBoundingClientRect().top < vh * .8) {
+      barsAnimated = true;
+      document.querySelectorAll('.cap-fill').forEach(f => {
+        f.style.width = f.dataset.width + '%';
+      });
+    }
+  }
+
+  // holding bars
+  if(!holdingAnimated) {
+    const sec = document.getElementById('facilitator');
+    if(sec && sec.getBoundingClientRect().top < vh * .8) {
+      holdingAnimated = true;
+      document.querySelectorAll('.fac-fill').forEach(f => {
+        f.style.width = f.dataset.width + '%';
+      });
+    }
+  }
+}
+
+window.addEventListener('scroll', checkReveal, {passive:true});
+checkReveal();
+
+// ── nav active ──────────────────────────────────────────────────────────────
+const navAs = document.querySelectorAll('.nav-links a');
+const secs  = document.querySelectorAll('section[id]');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  secs.forEach(s => { if(window.scrollY >= s.offsetTop - 80) cur = s.id; });
+  navAs.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + cur);
+  });
+}, {passive:true});
+</script>
+</body>
+</html>
